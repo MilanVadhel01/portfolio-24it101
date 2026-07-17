@@ -1,27 +1,22 @@
-import Header from "./components/Header";
-import About from "./components/About";
-import Skills from "./components/Skills";
-import Footer from "./components/Footer";
+import { Routes, Route } from "react-router-dom";
+
+import NavBar from "./components/NavBar";
+
+import Home from "./pages/Home";
+import Projects from "./pages/Projects";
+import Contact from "./pages/Contact";
 
 function App() {
-  const studentName = "Milan Vadhel";
-
-  const skills = [
-    "HTML",
-    "CSS",
-    "JavaScript",
-    "React",
-    "Git",
-    "GitHub",
-  ];
-
   return (
-    <div>
-      <Header name={studentName} />
-      <About />
-      <Skills skillList={skills} />
-      <Footer />
-    </div>
+    <>
+      <NavBar />
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/contact" element={<Contact />} />
+      </Routes>
+    </>
   );
 }
 
