@@ -18,6 +18,7 @@ function Contact() {
 
       <p>Your Message: {message}</p>
 
+        <p>Character Count: {message.length}</p>
       <hr />
 
       {/* Toggle UI */}
