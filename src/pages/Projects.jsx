@@ -1,95 +1,182 @@
 import { useState, useEffect } from 'react';
-import RepoCard from '../components/RepoCard';
+import TaskCard from '../components/TaskCard';
+import { getTasks, createTask, updateTask, deleteTask } from '../api';
 
 function Projects() {
-  const [repos, setRepos] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null); // 'Creating task...', 'Updating task...', 'Deleting task...'
+  const [toastMsg, setToastMsg] = useState('');
 
-  const fetchRepositories = async () => {
+  // Form State
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  const fetchTasks = async () => {
     setLoading(true);
-    setError(false);
+    setError(null);
     try {
-      // Fetching repositories for the user MilanVadhel01
-      const response = await fetch('https://api.github.com/users/MilanVadhel01/repos?sort=updated');
-      if (!response.ok) {
-        throw new Error('Failed to fetch data');
-      }
-      const data = await response.json();
-      setRepos(data);
+      const data = await getTasks();
+      setTasks(data);
     } catch (err) {
       console.error(err);
-      setError(true);
+      setError('Unable to load tasks.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRepositories();
+    fetchTasks();
   }, []);
 
-  const filteredRepos = repos.filter(repo => 
-    repo.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (repo.description && repo.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+
+    setActionLoading('Creating task...');
+    setError(null);
+    try {
+      const newTask = await createTask({ title: newTitle, description: newDesc });
+      setTasks([...tasks, newTask]);
+      setNewTitle('');
+      setNewDesc('');
+      showToast('Task created successfully!');
+    } catch (err) {
+      console.error(err);
+      setError('Failed to create task.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUpdateTask = async (id, updatedData) => {
+    setActionLoading('Updating task...');
+    setError(null);
+    try {
+      const updatedTask = await updateTask(id, updatedData);
+      setTasks(tasks.map(t => t._id === id ? updatedTask : t));
+      showToast('Task updated successfully!');
+    } catch (err) {
+      console.error(err);
+      setError('Failed to update task.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    setActionLoading('Deleting task...');
+    setError(null);
+    try {
+      await deleteTask(id);
+      setTasks(tasks.filter(t => t._id !== id));
+      showToast('Task deleted successfully!');
+    } catch (err) {
+      console.error(err);
+      setError('Failed to delete task.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   return (
     <div className="container" style={{ padding: '2rem 1.5rem' }}>
       <div className="page-header">
-        <h1 className="page-title">GitHub Repositories</h1>
-        <p className="page-subtitle">Repositories fetched dynamically from the GitHub REST API.</p>
+        <h1 className="page-title">Task Management</h1>
+        <p className="page-subtitle">Manage your practical tasks using Express & MongoDB.</p>
       </div>
 
-      <div className="search-container">
-        <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input 
-          type="text" 
-          className="search-input" 
-          placeholder="Search repositories..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="repo-card" style={{ marginBottom: '2rem' }}>
+        <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Add New Task</h2>
+        <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <input 
+            type="text"
+            className="search-input" 
+            style={{ padding: '0.75rem', paddingLeft: '1rem' }}
+            placeholder="Task Title"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            required
+          />
+          <textarea
+            className="search-input" 
+            style={{ padding: '0.75rem', paddingLeft: '1rem', minHeight: '80px', borderRadius: '0.5rem' }}
+            placeholder="Description"
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+          />
+          <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start' }} disabled={!!actionLoading}>
+            Add Task
+          </button>
+        </form>
       </div>
 
-      {loading && (
-        <div className="state-container">
-          <div className="spinner"></div>
-          <p className="state-text">Loading repositories...</p>
+      {actionLoading && (
+        <div style={{ backgroundColor: '#eff6ff', color: '#1e40af', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+          {actionLoading}
         </div>
       )}
 
       {error && !loading && (
-        <div className="state-container">
-          <svg className="state-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="state-container" style={{ padding: '2rem' }}>
+          <svg className="state-icon" style={{ color: '#ef4444' }} xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
-          <p className="state-text">Unable to load repositories.</p>
-          <button className="btn-primary" onClick={fetchRepositories}>Retry</button>
+          <p className="state-text" style={{ color: '#ef4444' }}>{error}</p>
+          <button className="btn-primary" onClick={fetchTasks}>Retry Fetching Tasks</button>
         </div>
       )}
 
-      {!loading && !error && filteredRepos.length === 0 && (
+      {loading && (
         <div className="state-container">
-          <svg className="state-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-          </svg>
-          <p className="state-text">No repositories found.</p>
+          <div className="spinner"></div>
+          <p className="state-text">Loading tasks...</p>
         </div>
       )}
 
-      {!loading && !error && filteredRepos.length > 0 && (
+      {!loading && tasks.length === 0 && !error && (
+        <div className="state-container">
+          <p className="state-text">No tasks found. Create one above!</p>
+        </div>
+      )}
+
+      {!loading && tasks.length > 0 && (
         <div className="repo-list">
-          {filteredRepos.map(repo => (
-            <RepoCard key={repo.id} repo={repo} />
+          {tasks.map(task => (
+            <TaskCard 
+              key={task._id} 
+              task={task} 
+              onUpdate={handleUpdateTask} 
+              onDelete={handleDeleteTask} 
+            />
           ))}
+        </div>
+      )}
+
+      {toastMsg && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: '#10b981', // Tailwind emerald-500
+          color: 'white',
+          padding: '1rem 1.5rem',
+          borderRadius: '0.5rem',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          zIndex: 1000,
+          fontWeight: 500,
+          animation: 'fadeIn 0.3s ease-in-out'
+        }}>
+          {toastMsg}
         </div>
       )}
     </div>
