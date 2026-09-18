@@ -31,6 +31,7 @@ A college practical project (B.Tech IT — Milan Vadhel) split across two reposi
 | Database | MongoDB Atlas (cloud) | — |
 | CORS | cors | ^2.8.6 |
 | Env vars | dotenv | ^16.4.5 |
+| Caching | node-cache | (latest) |
 | Module system | CommonJS (`require`) | — |
 
 > **No TypeScript in either repo. No test framework installed. No formatter configured.**
@@ -61,7 +62,7 @@ portfolio-24it101/
 │   └── icons.svg
 └── src/
     ├── main.jsx            # Entry — BrowserRouter + StrictMode
-    ├── App.jsx             # Top-level routes: /, /projects, /contact
+    ├── App.jsx             # Top-level routes: /, /projects, /contact — lazy() + Suspense (Practical 8)
     ├── App.css             # Vite scaffold CSS (mostly unused boilerplate)
     ├── index.css           # Actual design system — CSS custom props, all component styles
     ├── api.js              # fetch-based API client — getTasks, createTask, updateTask, deleteTask
@@ -87,7 +88,8 @@ portfolio-24it101/
 
 ```
 task-manager-api-24it101/
-├── server.js               # Express app — middleware, routes, error handler, listen
+├── server.js               # Express app — middleware, routes, caching, error handler, listen
+├── cache.js                # Shared NodeCache instance (60s TTL) — Practical 9
 ├── models/
 │   └── Task.js             # Mongoose schema + pre-save hook + model export
 ├── .env                    # MONGO_URI (git-ignored)
@@ -144,6 +146,13 @@ npm start                  # node server.js → http://localhost:5000
 - **API client**: Hardcoded `BASE_URL = "http://localhost:5000"` in `src/api.js`
 - **No environment variables on the frontend** — the API URL is a string literal
 - **Backend routes**: All defined inline in `server.js`, no separate router files
+- **Backend caching (Practical 9)**: `GET /tasks` and `GET /tasks/:id` use `node-cache` with 60s TTL; all write routes invalidate cache; debug stats at `GET /debug/cache-stats`
+
+### Performance optimization (Practical 8)
+- **Route-based code splitting**: `Projects` and `Contact` pages use `React.lazy()` + dynamic `import()`
+- **Home stays static**: Landing page is always in the main bundle (loads first)
+- **Suspense boundary**: Wraps only the `<Routes>` block, not the entire app
+- **Fallback UI**: Uses existing `.state-container` + `.spinner` + `.state-text` CSS classes — matches the in-page loading pattern
 
 ### Style conventions
 - CSS custom properties for theming (`--primary-color`, `--bg-color`, etc.)
@@ -157,13 +166,14 @@ npm start                  # node server.js → http://localhost:5000
 
 | File | Role |
 |---|---|
-| `portfolio-24it101/src/App.jsx` | Route definitions — the structural overview of all pages |
+| `portfolio-24it101/src/App.jsx` | Route definitions with `lazy()` + `Suspense` for code splitting (Practical 8) |
 | `portfolio-24it101/src/api.js` | Single API client — all backend communication goes through here |
 | `portfolio-24it101/src/pages/Projects.jsx` | Main feature page — task CRUD logic, form, list, toast, error/loading states |
 | `portfolio-24it101/src/components/TaskCard.jsx` | Core interactive component — edit mode, completion toggle, delete |
 | `portfolio-24it101/src/index.css` | Design system — all CSS custom properties and component styles |
 | `portfolio-24it101/src/main.jsx` | App bootstrap — BrowserRouter, StrictMode, root render |
-| `task-manager-api-24it101/server.js` | Entire backend — middleware, all 5 REST routes, error handler |
+| `task-manager-api-24it101/server.js` | Entire backend — middleware, all 5 REST routes + cache logic + debug endpoint, error handler |
+| `task-manager-api-24it101/cache.js` | Shared `NodeCache` instance (60s TTL) — imported by `server.js` |
 | `task-manager-api-24it101/models/Task.js` | Mongoose schema — defines task shape, validation, pre-save hook |
 | `task-manager-api-24it101/.env.example` | Documents required env vars for backend setup |
 
