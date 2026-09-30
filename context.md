@@ -4,6 +4,8 @@
 
 A college practical project (B.Tech IT — Milan Vadhel) split across two repositories. The **frontend** (`portfolio-24it101`) is a React single-page portfolio/dashboard that lists GitHub repos and manages tasks. The **backend** (`task-manager-api-24it101`) is a REST API built with Express + MongoDB (Mongoose) exposing CRUD endpoints for tasks. The frontend calls the backend at `http://localhost:5000`. Target audience: course instructors evaluating practical assignments.
 
+**Practical progress:** frontend is complete through Practical 8 (lazy + Suspense code splitting). Backend has since added Practical 9 (node-cache caching) and Practical 10 (event-driven async notifications via Node's built-in `events`). **Neither changed the API contract, so the frontend required no code changes** — see the two repos' docs for details.
+
 ---
 
 ## 2. Tech Stack
@@ -32,6 +34,7 @@ A college practical project (B.Tech IT — Milan Vadhel) split across two reposi
 | CORS | cors | ^2.8.6 |
 | Env vars | dotenv | ^16.4.5 |
 | Caching | node-cache | (latest) |
+| Events | Node built-in `events` | Async task notifications (Practical 10) |
 | Module system | CommonJS (`require`) | — |
 
 > **No TypeScript in either repo. No test framework installed. No formatter configured.**
@@ -88,8 +91,11 @@ portfolio-24it101/
 
 ```
 task-manager-api-24it101/
-├── server.js               # Express app — middleware, routes, caching, error handler, listen
+├── server.js               # Express app — middleware, routes, caching, event emits, error handler, listen
 ├── cache.js                # Shared NodeCache instance (60s TTL) — Practical 9
+├── events.js               # Shared EventEmitter instance — Practical 10
+├── listeners.js            # task-created / task-deleted / error listeners — Practical 10
+├── compare.js              # EDA vs non-EDA response-time demo — Practical 10
 ├── models/
 │   └── Task.js             # Mongoose schema + pre-save hook + model export
 ├── .env                    # MONGO_URI (git-ignored)
@@ -147,6 +153,8 @@ npm start                  # node server.js → http://localhost:5000
 - **No environment variables on the frontend** — the API URL is a string literal
 - **Backend routes**: All defined inline in `server.js`, no separate router files
 - **Backend caching (Practical 9)**: `GET /tasks` and `GET /tasks/:id` use `node-cache` with 60s TTL; all write routes invalidate cache; debug stats at `GET /debug/cache-stats`
+- **Backend events (Practical 10)**: POST/DELETE routes emit `task-created` / `task-deleted` on a shared EventEmitter AFTER the response is sent; listeners in `listeners.js` log notifications asynchronously (2s simulated delay) — invisible to API consumers, no frontend involvement
+- **EDA timing demo (Practical 10)**: `node compare.js` in the backend repo compares inline vs event-driven response times
 
 ### Performance optimization (Practical 8)
 - **Route-based code splitting**: `Projects` and `Contact` pages use `React.lazy()` + dynamic `import()`
@@ -172,8 +180,11 @@ npm start                  # node server.js → http://localhost:5000
 | `portfolio-24it101/src/components/TaskCard.jsx` | Core interactive component — edit mode, completion toggle, delete |
 | `portfolio-24it101/src/index.css` | Design system — all CSS custom properties and component styles |
 | `portfolio-24it101/src/main.jsx` | App bootstrap — BrowserRouter, StrictMode, root render |
-| `task-manager-api-24it101/server.js` | Entire backend — middleware, all 5 REST routes + cache logic + debug endpoint, error handler |
+| `task-manager-api-24it101/server.js` | Entire backend — middleware, all 5 REST routes + cache logic + debug endpoint + event emits, error handler |
 | `task-manager-api-24it101/cache.js` | Shared `NodeCache` instance (60s TTL) — imported by `server.js` |
+| `task-manager-api-24it101/events.js` | Shared EventEmitter instance — Practical 10 |
+| `task-manager-api-24it101/listeners.js` | Registers task-created / task-deleted / error listeners — Practical 10 |
+| `task-manager-api-24it101/compare.js` | EDA vs non-EDA timing comparison demo — Practical 10 |
 | `task-manager-api-24it101/models/Task.js` | Mongoose schema — defines task shape, validation, pre-save hook |
 | `task-manager-api-24it101/.env.example` | Documents required env vars for backend setup |
 
@@ -193,6 +204,8 @@ npm start                  # node server.js → http://localhost:5000
 - **`deleteTask` in `api.js` doesn't return JSON**: The function doesn't call `.json()` on the response — this works only because the frontend doesn't use the return value.
 - **Toast implementation is basic**: No animation cleanup on unmount; rapid actions can stack toasts or cause state updates on unmounted components.
 - **No input sanitization on the backend** beyond Mongoose schema validation.
+- **Notifications are backend-only (Practical 10)**: task-created / task-deleted events produce console logs on the server, not user-facing toasts or extra API fields. Don't expect frontend changes when grading Practical 10.
+- **Timing demo runs separately**: `compare.js` is a standalone script (`node compare.js` in the backend repo), not an endpoint — it busy-waits on purpose to simulate a blocking inline handler.
 
 ---
 
