@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
+// Note: the file is NavBar.jsx — the import path must match its exact
+// case because Linux (Docker) file systems are case-sensitive
+import Navbar from './components/NavBar';
 import Home from './pages/Home';
 
 // Lazy-loaded routes for code splitting

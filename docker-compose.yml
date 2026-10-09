@@ -1,0 +1,89 @@
+# ─────────────────────────────────────────────
+# PRACTICAL 11 — Docker Compose
+# Orchestrates three services:
+#   frontend   → React SPA served by Nginx  (localhost:5173)
+#   backend    → Express REST API           (localhost:5000)
+#   mongodb    → official MongoDB server    (localhost:27017)
+#
+# This file lives in the FRONTEND repo (portfolio-24it101)
+# and builds the backend from its sibling directory:
+#   ../task-manager-api-24it101
+# The two Git repositories stay separate.
+#
+# Start everything with ONE command from this directory:
+#   docker compose up --build
+# ─────────────────────────────────────────────
+
+services:
+
+  # ── React frontend ────────────────────────
+  frontend:
+    build:
+      context: .                          # this repo (portfolio-24it101)
+      dockerfile: Dockerfile
+    container_name: portfolio-frontend
+    ports:
+      - "5173:80"                         # host 5173 → container 80 (Nginx)
+    depends_on:
+      backend:
+        condition: service_started        # start after the API container is up
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ── Express backend ───────────────────────
+  backend:
+    build:
+      context: ../task-manager-api-24it101  # sibling repo build context
+      dockerfile: Dockerfile
+    container_name: task-manager-backend
+    ports:
+      - "5000:5000"                       # host 5000 → container 5000
+    environment:
+      # Container-to-container networking: the backend reaches
+      # MongoDB by its SERVICE NAME "mongodb" on the Docker
+      # network — not localhost, and NOT the Atlas .env file.
+      # dotenv does not override variables that already exist,
+      # so this value wins inside the container without
+      # touching local development or the real .env.
+      MONGO_URI: mongodb://mongodb:27017/taskdb
+    depends_on:
+      mongodb:
+        condition: service_healthy        # wait until MongoDB passes its health check
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ── MongoDB database ──────────────────────
+  mongodb:
+    image: mongo:7.0                      # official image, explicit version tag
+    container_name: task-manager-mongodb
+    ports:
+      - "27017:27017"                     # published so you can inspect data locally
+    volumes:
+      - mongo_data:/data/db               # named volume → data survives restarts
+    healthcheck:
+      # mongosh ping tells Compose when the server accepts connections
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s                   # allow time for first-time DB initialisation
+    networks:
+      - app-network
+    restart: unless-stopped
+
+# ── Explicit bridge network ────────────────
+# All three containers attach to it, so they can
+# resolve each other by service name (frontend,
+# backend, mongodb).
+networks:
+  app-network:
+    driver: bridge
+
+# ── Named volume for MongoDB data ──────────
+# Lives outside any container, so task data
+# survives `docker compose stop`, `restart`,
+# and even `down` (only `down -v` deletes it).
+volumes:
+  mongo_data:
