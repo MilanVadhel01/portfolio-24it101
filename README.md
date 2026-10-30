@@ -15,6 +15,11 @@ It consumes the Task Manager API (`task-manager-api-24it101`) for the task CRUD 
 > `src/App.jsx` imported `./components/Navbar` but the file is `NavBar.jsx` —
 > Windows hides that mistake, Linux (Docker) does not. No API or UI behavior changed.
 
+> 🤖 **Practical 13 note:** the Projects page gains a **Generate Description** button that
+> asks the backend (`POST /api/ai/generate-description`) for an editable AI suggestion.
+> The OpenRouter API key stays entirely on the backend — this repo contains no key and no
+> direct OpenRouter calls.
+
 ---
 
 ## 🚀 Tech Stack
@@ -108,6 +113,7 @@ npm run dev        # → http://localhost:5173
 
 - **Home** — landing page with CTA to the projects dashboard
 - **Projects** — full task CRUD (create, inline edit, toggle complete, delete) with toast notifications, loading & error states
+- **AI task descriptions (Practical 13)** — a **Generate Description** button fills the description textarea with an editable suggestion, with loading, fallback and review-notice states
 - **Contact** — static contact form
 - **Route-based code splitting** — `Projects` and `Contact` are `React.lazy()`-loaded (Practical 8)
 - **Responsive design** — Poppins font, CSS custom-property theming

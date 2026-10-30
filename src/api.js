@@ -44,3 +44,28 @@ export const deleteTask = async (id) => {
         throw new Error('Failed to delete task');
     }
 };
+
+// Practical 13 — ask OUR backend for an AI description.
+// The browser never talks to OpenRouter and never sees the API key.
+export const generateTaskDescription = async (title) => {
+    const response = await fetch(`${BASE_URL}/api/ai/generate-description`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title })
+    });
+
+    // The backend always answers with JSON, including fallbacks
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok && !data.fallback) {
+        throw new Error(data.error || 'Failed to generate description');
+    }
+
+    return {
+        description: data.description || '',
+        fallback: Boolean(data.fallback),
+        message: data.message || ''
+    };
+};

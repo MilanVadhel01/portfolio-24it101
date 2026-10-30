@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import TaskCard from '../components/TaskCard';
-import { getTasks, createTask, updateTask, deleteTask } from '../api';
+import { getTasks, createTask, updateTask, deleteTask, generateTaskDescription } from '../api';
 
 function Projects() {
   const [tasks, setTasks] = useState([]);
@@ -12,6 +12,11 @@ function Projects() {
   // Form State
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
+
+  // AI state (Practical 13)
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiGenerated, setAiGenerated] = useState(false);
+  const [aiNotice, setAiNotice] = useState(null); // { type: 'success' | 'fallback', text }
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -36,6 +41,38 @@ function Projects() {
     fetchTasks();
   }, []);
 
+  // Practical 13 — ask the backend for an AI description suggestion.
+  // The generated text only fills the textarea; the user must still
+  // review it and submit the form before anything is saved.
+  const handleGenerateDescription = async () => {
+    const title = newTitle.trim();
+    if (!title || aiLoading) return; // button is disabled in this case
+
+    setAiLoading(true);
+    setAiNotice(null);
+    try {
+      const result = await generateTaskDescription(title);
+      if (result.description) {
+        setNewDesc(result.description);
+        setAiGenerated(true);
+        setAiNotice({ type: 'success', text: 'Description generated. Review and edit it before saving.' });
+      } else {
+        setAiNotice({
+          type: 'fallback',
+          text: result.message || 'AI suggestions are temporarily unavailable. Please enter your task description manually.'
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setAiNotice({
+        type: 'fallback',
+        text: 'AI suggestions are temporarily unavailable. Please enter your task description manually.'
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleCreateTask = async (e) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
@@ -47,6 +84,8 @@ function Projects() {
       setTasks([...tasks, newTask]);
       setNewTitle('');
       setNewDesc('');
+      setAiGenerated(false);
+      setAiNotice(null);
       showToast('Task created successfully!');
     } catch (err) {
       console.error(err);
@@ -112,6 +151,45 @@ function Projects() {
             value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
           />
+
+          {/* Practical 13 — AI description suggestion */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleGenerateDescription}
+              disabled={!newTitle.trim() || aiLoading}
+              style={{
+                opacity: (!newTitle.trim() || aiLoading) ? 0.6 : 1,
+                cursor: (!newTitle.trim() || aiLoading) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {aiLoading ? 'Generating...' : 'Generate Description'}
+            </button>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              {aiLoading ? 'Contacting the AI service...' : 'Uses the task title to suggest a description.'}
+            </span>
+          </div>
+
+          {aiNotice && (
+            <p
+              role="status"
+              style={{
+                margin: 0,
+                fontSize: '0.875rem',
+                color: aiNotice.type === 'success' ? 'var(--primary-color)' : '#b45309'
+              }}
+            >
+              {aiNotice.text}
+            </p>
+          )}
+
+          {aiGenerated && (
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              AI-generated suggestion. Please review and edit before saving.
+            </p>
+          )}
+
           <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start' }} disabled={!!actionLoading}>
             Add Task
           </button>

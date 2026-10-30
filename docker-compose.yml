@@ -5,6 +5,9 @@
 #   backend    → Express REST API           (localhost:5000)
 #   mongodb    → official MongoDB server    (localhost:27017)
 #
+# Practical 13 adds the backend .env as an optional runtime
+# env_file for the OpenRouter AI settings — never into an image.
+#
 # This file lives in the FRONTEND repo (portfolio-24it101)
 # and builds the backend from its sibling directory:
 #   ../task-manager-api-24it101
@@ -39,6 +42,14 @@ services:
     container_name: task-manager-backend
     ports:
       - "5000:5000"                       # host 5000 → container 5000
+    # Practical 13 — read the backend's real .env at runtime so the
+    # container receives OPENROUTER_API_KEY / OPENROUTER_MODEL.
+    # The file is never baked into the image (.dockerignore blocks it).
+    # required: false keeps Practical 11 working when no .env exists —
+    # the AI route then just returns its graceful fallback.
+    env_file:
+      - path: ../task-manager-api-24it101/.env
+        required: false
     environment:
       # Container-to-container networking: the backend reaches
       # MongoDB by its SERVICE NAME "mongodb" on the Docker
