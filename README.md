@@ -203,6 +203,12 @@ The image runs `npm ci` itself and installs the exact versions from
 Run everything from **this** directory (`portfolio-24it101`):
 
 ```bash
+# Confirm that Docker is installed
+docker --version
+
+# Confirm that the Docker Compose plugin is available
+docker compose version
+
 # Validate the compose file without starting anything
 docker compose config
 

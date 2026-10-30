@@ -79,6 +79,7 @@ services:
 # backend, mongodb).
 networks:
   app-network:
+    name: app-network
     driver: bridge
 
 # ── Named volume for MongoDB data ──────────
@@ -87,3 +88,4 @@ networks:
 # and even `down` (only `down -v` deletes it).
 volumes:
   mongo_data:
+    name: mongo_data
