@@ -15,6 +15,11 @@ function Navbar() {
             </NavLink>
           </li>
           <li>
+            <NavLink to="/repositories" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+              Repositories
+            </NavLink>
+          </li>
+          <li>
             <NavLink to="/projects" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
               Projects
             </NavLink>

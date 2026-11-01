@@ -10,7 +10,7 @@ function Home() {
         This is a demonstration of a React UI for a college Practical project. It features routing, component architecture, and API integration.
       </p>
       
-      <Link to="/projects" className="btn-primary" style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }}>
+      <Link to="/repositories" className="btn-primary" style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }}>
         View GitHub Repositories
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '0.5rem' }}>
           <line x1="5" y1="12" x2="19" y2="12"></line>

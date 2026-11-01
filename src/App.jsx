@@ -6,6 +6,7 @@ import Navbar from './components/NavBar';
 import Home from './pages/Home';
 
 // Lazy-loaded routes for code splitting
+const Repositories = lazy(() => import('./pages/Repositories'));
 const Projects = lazy(() => import('./pages/Projects'));
 const Contact = lazy(() => import('./pages/Contact'));
 
@@ -26,6 +27,7 @@ function App() {
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/repositories" element={<Repositories />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/contact" element={<Contact />} />
           </Routes>
