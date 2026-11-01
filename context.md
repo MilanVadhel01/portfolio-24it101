@@ -8,6 +8,10 @@ A college practical project (B.Tech IT — Milan Vadhel) split across two reposi
 
 **Practical 11 (Docker):** both apps are containerized and orchestrated by Docker Compose. The Compose file lives in the **frontend** repo and builds the backend from its sibling directory `../task-manager-api-24it101`, alongside an official `mongo:7.0` service on a bridge network `app-network` with a `mongo_data` named volume. Only code change: `src/App.jsx` now imports `./components/NavBar` (exact filename — Linux containers are case-sensitive).
 
+**Practical 12 (testing):** backend only — Jest + Supertest against a dedicated `taskdb_test` database, with `server.js` split into `startServer()` + `module.exports = app` so the app can be imported without opening a port. No frontend changes.
+
+**Practical 13 (AI integration):** the Projects page gains a **Generate Description** button. The browser calls **our own backend** (`POST /api/ai/generate-description`); the OpenRouter API key lives only in the backend `.env`. The frontend sends just the task title, receives `{ description, fallback, message }`, and drops the suggestion into the description textarea for the user to edit before saving. Compose gained an optional `env_file` entry so the backend container receives the AI env vars.
+
 ---
 
 ## 2. Tech Stack
@@ -40,9 +44,11 @@ A college practical project (B.Tech IT — Milan Vadhel) split across two reposi
 | Env vars | dotenv | ^16.4.5 |
 | Caching | node-cache | (latest) |
 | Events | Node built-in `events` | Async task notifications (Practical 10) |
+| AI SDK | openai | ^7.45.1 — pointed at OpenRouter's base URL (Practical 13) |
+| Testing | jest ^30.5.2 + supertest ^7.3.1 | Backend only (Practical 12) |
 | Module system | CommonJS (`require`) | — |
 
-> **No TypeScript in either repo. No test framework installed. No formatter configured.**
+> **No TypeScript in either repo. The backend is the only repo with tests (Jest). No formatter configured.**
 
 ---
 
@@ -86,7 +92,7 @@ portfolio-24it101/
     ├── App.jsx             # Top-level routes: /, /projects, /contact — lazy() + Suspense (P8); imports ./components/NavBar with exact case (P11 fix)
     ├── App.css             # Vite scaffold CSS (mostly unused boilerplate)
     ├── index.css           # Actual design system — CSS custom props, all component styles
-    ├── api.js              # fetch-based API client — getTasks, createTask, updateTask, deleteTask
+    ├── api.js              # fetch-based API client — getTasks, createTask, updateTask, deleteTask, generateTaskDescription (P13)
     ├── assets/             # Static images (hero.png, react.svg, vite.svg)
     ├── components/
     │   ├── NavBar.jsx      # Sticky navbar with NavLink active styling
@@ -100,7 +106,7 @@ portfolio-24it101/
     │   └── ErrorMessage.jsx # Has a bug — button JSX is outside the return statement
     └── pages/
         ├── Home.jsx        # Landing page with CTA → /projects
-        ├── Projects.jsx    # Task CRUD UI — form + task list + toast notifications
+        ├── Projects.jsx    # Task CRUD UI — form + task list + toast + Generate Description button (P13)
         ├── Contact.jsx     # Static contact form (no submit handler)
         └── NotFound.jsx    # 404 page (exists but not wired into Routes)
 ```
@@ -109,15 +115,19 @@ portfolio-24it101/
 
 ```
 task-manager-api-24it101/
-├── server.js               # Express app — middleware, routes, caching, event emits, error handler, listen
+├── server.js               # Express app — middleware, CRUD routes, caching, event emits, AI route, error handler, startServer()
 ├── cache.js                # Shared NodeCache instance (60s TTL) — Practical 9
 ├── events.js               # Shared EventEmitter instance — Practical 10
 ├── listeners.js            # task-created / task-deleted / error listeners — Practical 10
 ├── compare.js              # EDA vs non-EDA response-time demo — Practical 10
 ├── models/
 │   └── Task.js             # Mongoose schema + pre-save hook + model export
-├── .env                    # MONGO_URI (git-ignored — never copied into Docker)
-├── .env.example            # Template for MONGO_URI
+├── tests/
+│   ├── tasks.test.js       # CRUD + caching tests against taskdb_test — Practical 12
+│   ├── ai.test.js          # AI route tests with the OpenAI SDK mocked — Practical 13
+│   └── ai-no-key.test.js   # Missing-key fallback test — Practical 13
+├── .env                    # MONGO_URI + OPENROUTER_API_KEY/MODEL (git-ignored — never copied into Docker)
+├── .env.example            # Template for MONGO_URI, MONGO_TEST_URI, OPENROUTER_* vars
 ├── .gitignore              # Ignores node_modules/ and .env
 ├── Dockerfile              # node:22-alpine API image, EXPOSE 5000 (Practical 11)
 ├── .dockerignore           # Keeps .env, node_modules/, .git/ out of image (Practical 11)
@@ -145,11 +155,12 @@ npm run lint       # Run Oxlint
 ```bash
 cd d:\task-manager-api-24it101
 npm install
-copy .env.example .env     # Then fill in MONGO_URI
+copy .env.example .env     # Then fill in MONGO_URI (+ OPENROUTER_API_KEY for Practical 13)
 npm start                  # node server.js → http://localhost:5000
+npm test                   # Jest + Supertest (needs MongoDB on 127.0.0.1:27017 or MONGO_TEST_URI)
 ```
 
-- **No test command** — neither project has a test runner or test scripts.
+- **Tests exist only in the backend** (Practical 12/13): `npm test` runs `jest --runInBand`. `tests/tasks.test.js` uses the dedicated `taskdb_test` database; the AI tests mock the OpenAI SDK so they never call OpenRouter or consume quota.
 - **No format command** — no Prettier or similar configured.
 - **Both must run simultaneously** for the full app to work (frontend on :5173, backend on :5000).
 
@@ -191,6 +202,7 @@ No local Node, npm install, `.env`, or MongoDB install needed: the backend conta
 - **Backend caching (Practical 9)**: `GET /tasks` and `GET /tasks/:id` use `node-cache` with 60s TTL; all write routes invalidate cache; debug stats at `GET /debug/cache-stats`
 - **Backend events (Practical 10)**: POST/DELETE routes emit `task-created` / `task-deleted` on a shared EventEmitter AFTER the response is sent; listeners in `listeners.js` log notifications asynchronously (2s simulated delay) — invisible to API consumers, no frontend involvement
 - **EDA timing demo (Practical 10)**: `node compare.js` in the backend repo compares inline vs event-driven response times
+- **AI suggestions (Practical 13)**: the frontend only ever calls `POST /api/ai/generate-description` on the backend. The response shape is always `{ description, fallback }` — plus a human-readable `message` on fallback — so the UI never needs to distinguish a network error from a provider error. A missing key, timeout, empty completion or quota error all come back as `fallback: true` with status 200.
 
 ### Performance optimization (Practical 8)
 - **Route-based code splitting**: `Projects` and `Contact` pages use `React.lazy()` + dynamic `import()`
@@ -211,22 +223,24 @@ No local Node, npm install, `.env`, or MongoDB install needed: the backend conta
 | File | Role |
 |---|---|
 | `portfolio-24it101/src/App.jsx` | Route definitions with `lazy()` + `Suspense` for code splitting (Practical 8) |
-| `portfolio-24it101/src/api.js` | Single API client — all backend communication goes through here |
-| `portfolio-24it101/src/pages/Projects.jsx` | Main feature page — task CRUD logic, form, list, toast, error/loading states |
+| `portfolio-24it101/src/api.js` | Single API client — all backend communication goes through here (incl. `generateTaskDescription`, P13) |
+| `portfolio-24it101/src/pages/Projects.jsx` | Main feature page — task CRUD logic, form, list, toast, error/loading states, Generate Description button + fallback notice (P13) |
 | `portfolio-24it101/src/components/TaskCard.jsx` | Core interactive component — edit mode, completion toggle, delete |
 | `portfolio-24it101/src/index.css` | Design system — all CSS custom properties and component styles |
 | `portfolio-24it101/src/main.jsx` | App bootstrap — BrowserRouter, StrictMode, root render |
 | `portfolio-24it101/Dockerfile` | Multi-stage container build — Vite build (node:22-alpine) → Nginx serve (Practical 11) |
 | `portfolio-24it101/nginx.conf` | SPA fallback so React Router routes survive hard refresh (Practical 11) |
-| `portfolio-24it101/docker-compose.yml` | Compose stack: frontend + backend + mongodb, network `app-network`, volume `mongo_data` (Practical 11) |
+| `portfolio-24it101/docker-compose.yml` | Compose stack: frontend + backend + mongodb, network `app-network`, volume `mongo_data` (P11); optional `env_file` hands the backend `.env` to the container (P13) |
 | `task-manager-api-24it101/Dockerfile` | Backend API image (Practical 11) |
-| `task-manager-api-24it101/server.js` | Entire backend — middleware, all 5 REST routes + cache logic + debug endpoint + event emits, error handler |
+| `task-manager-api-24it101/server.js` | Entire backend — middleware, 5 REST routes + cache logic + debug endpoint + event emits, AI route (P13), error handler, `startServer()` |
+| `task-manager-api-24it101/tests/tasks.test.js` | CRUD/caching tests on `taskdb_test` (P12) |
+| `task-manager-api-24it101/tests/ai.test.js` | AI route tests with the OpenAI SDK mocked — no real quota used (P13) |
 | `task-manager-api-24it101/cache.js` | Shared `NodeCache` instance (60s TTL) — imported by `server.js` |
 | `task-manager-api-24it101/events.js` | Shared EventEmitter instance — Practical 10 |
 | `task-manager-api-24it101/listeners.js` | Registers task-created / task-deleted / error listeners — Practical 10 |
 | `task-manager-api-24it101/compare.js` | EDA vs non-EDA timing comparison demo — Practical 10 |
 | `task-manager-api-24it101/models/Task.js` | Mongoose schema — defines task shape, validation, pre-save hook |
-| `task-manager-api-24it101/.env.example` | Documents required env vars for backend setup |
+| `task-manager-api-24it101/.env.example` | Documents required env vars for backend setup (`MONGO_URI`, `MONGO_TEST_URI`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`) |
 
 ---
 
@@ -250,6 +264,11 @@ No local Node, npm install, `.env`, or MongoDB install needed: the backend conta
 - **Nginx `types {}` replaces the default MIME table (P11)**: a custom `types` block drops `text/html`, making browsers download `index.html` instead of rendering the app — that's why `nginx.conf` relies on nginx's built-in mime.types.
 - **Port conflicts with local dev**: running `npm start` (backend) or `npm run dev` (Vite) locally occupies 5000/5173 and blocks `docker compose up` from publishing them.
 - **Two different networking cases (P11)**: Docker service names (`backend`, `mongodb`) only resolve inside `app-network`. The browser must use `http://localhost:5000`; the backend container must use `mongodb://mongodb:27017`, never `localhost`.
+- **The AI key must never reach the browser (P13)**: it lives in the backend `.env` only. Never add it to a `VITE_` variable — anything prefixed `VITE_` is compiled into the public bundle.
+- **`openrouter/free` is random (P13)**: it auto-routes each request to a different free model, so output style varies and some models return nothing at all. Set `OPENROUTER_MODEL` to one specific `:free` model for consistent results.
+- **Free tier is 50 AI calls/day (P13)**: a free OpenRouter account gets 50 free-model requests per day. When it runs out the backend returns a specific "quota used up" message — that is not a bug in the frontend.
+- **A `.env` edit needs a container recreate, not a restart (P13)**: `docker compose up -d --force-recreate backend` — a plain `restart` keeps the old container environment.
+- **Failed AI calls do not burn the 60s cooldown (P13)**: the rate-limit stamp is cleared on failure, so clicking Generate again after an error retries immediately. Only a *successful* generation blocks for 60 seconds.
 
 ---
 
